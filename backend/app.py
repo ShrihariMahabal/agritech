@@ -7,6 +7,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 import threading
 import time
+from youtubesearchpython import VideosSearch
+import json
+from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__)
 CORS(app)
@@ -158,5 +161,53 @@ def close_browser():
         print(f"Error closing browser: {str(e)}")
         return jsonify({"success": False, "message": f"Error closing browser: {str(e)}"})
 
-if __name__ == "__main__":
-    app.run(debug=False, host='0.0.0.0', port=5001)  # debug=False for better thread handling
+@app.route('/search-youtube', methods=['POST'])
+def search_youtube():
+    try:
+        data = request.json
+        if 'query' not in data or not data['query']:
+            return jsonify({"success": False, "message": "Search query is required"})
+        
+        options = webdriver.ChromeOptions()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--headless')
+        
+        driver = webdriver.Chrome(options=options)
+        wait = WebDriverWait(driver, 10)
+        
+        try:
+            driver.get(f"https://www.youtube.com/results?search_query={data['query']} farming")
+            wait.until(EC.presence_of_element_located((By.ID, "contents")))
+            time.sleep(2)
+            
+            videos = driver.find_elements(By.CSS_SELECTOR, "ytd-video-renderer")[:5]
+            
+            formatted_results = []
+            for video in videos:
+                try:
+                    formatted_results.append({
+                        'title': video.find_element(By.CSS_SELECTOR, "#video-title").text,
+                        'link': video.find_element(By.CSS_SELECTOR, "#video-title").get_attribute("href"),
+                        'duration': video.find_element(
+                            By.CSS_SELECTOR, 
+                            "span.ytd-thumbnail-overlay-time-status-renderer"
+                        ).get_attribute("innerHTML").strip(),
+                        'channel': video.find_element(By.CSS_SELECTOR, ".ytd-channel-name").text
+                    })
+                except Exception as e:
+                    print(f"Error extracting video data: {str(e)}")
+                    continue
+            
+            return jsonify({"success": True, "results": formatted_results})
+            
+        finally:
+            driver.quit()
+            
+    except Exception as e:
+        print(f"YouTube Search Error: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to fetch YouTube results"})
+
+# Add at the end of the file
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)
