@@ -6,3 +6,6 @@ Pillow
 PyPDF2
 difflib
 pymongo
+requests 
+python-dotenv
+pymongo
