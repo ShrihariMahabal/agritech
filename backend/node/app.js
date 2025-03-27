@@ -23,6 +23,8 @@ const refund = require("./routes/handleRefund");
 app.use("/refund", refund);
 const green = require("./routes/handleGreen");
 app.use("/green", green);
+const sensor = require("./routes/handleSensor");
+app.use("/sensor", sensor);
 // Test Route
 app.get("/", (req, res) => {
   res.json({ message: "🚀 Express Server is Running!" });
