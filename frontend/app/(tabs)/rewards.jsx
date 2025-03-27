@@ -10,26 +10,27 @@ import {
   PermissionsAndroid,
   Alert,
   StatusBar,
-  // Picker, // REMOVE this line
 } from "react-native";
-import { Picker } from "@react-native-picker/picker"; // This one is correct
+import { Picker } from "@react-native-picker/picker";
 import * as turf from "@turf/turf";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+
 const FarmRouteOptimizer = () => {
   const [farmLand, setFarmLand] = useState([]);
   const [optimalRoute, setOptimalRoute] = useState(null);
   const [implementWidth, setImplementWidth] = useState("");
   const [userLocation, setUserLocation] = useState(null);
   const [savingsPercent, setSavingsPercent] = useState(null);
+  const [selectedCrop, setSelectedCrop] = useState("");
   const [initialRegion, setInitialRegion] = useState({
     latitude: 37.78825,
     longitude: -122.4324,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
-  const [selectedCrop, setSelectedCrop] = useState(""); // State for selected crop
+
   const cropOptions = [
     "",
     "Wheat",
@@ -38,7 +39,7 @@ const FarmRouteOptimizer = () => {
     "Cotton",
     "Soybean",
     "Other",
-  ]; // Crop options, including an empty default
+  ];
 
   useEffect(() => {
     getCurrentLocation();
@@ -122,29 +123,28 @@ const FarmRouteOptimizer = () => {
       return;
     }
 
+    if (!selectedCrop) {
+      Alert.alert("Error", "Please select a crop type");
+      return;
+    }
+
     const closedFarmLand = [...farmLand, farmLand[0]];
     const farmPolygon = turf.polygon([
       closedFarmLand.map((p) => [p.longitude, p.latitude]),
     ]);
 
-    // Define a small buffer inwards to simulate headlands (adjust the value as needed)
-    const headlandDistanceMeters = parseFloat(implementWidth) * 2; // Example: 2 times the implement width
-    const normalizedHeadlandDistance = headlandDistanceMeters * 0.00001; // Rough normalization
+    const headlandDistanceMeters = parseFloat(implementWidth) * 2;
+    const normalizedHeadlandDistance = headlandDistanceMeters * 0.000001;
 
     const bufferedPolygon = turf.buffer(
       farmPolygon,
       -normalizedHeadlandDistance,
       {
-        units: "degrees", // Using degrees as map units here (approximation)
+        units: "degrees",
       }
     );
 
-    if (
-      !bufferedPolygon ||
-      !bufferedPolygon.geometry ||
-      !bufferedPolygon.geometry.coordinates ||
-      bufferedPolygon.geometry.coordinates.length === 0
-    ) {
+    if (!bufferedPolygon?.geometry?.coordinates?.length) {
       Alert.alert(
         "Warning",
         "The farm area might be too small for the specified implement width and headland distance."
@@ -166,13 +166,13 @@ const FarmRouteOptimizer = () => {
 
     const farmWidth = maxLng - minLng;
     const farmHeight = maxLat - minLat;
-    const normalizedImplementWidth = parseFloat(implementWidth) * 0.00001;
+    const normalizedImplementWidth = parseFloat(implementWidth) * 0.000008;
     const isHorizontal = farmWidth >= farmHeight;
     const lines = [];
 
-    const longitudeStep = (maxLng - minLng) / 100;
-    const latitudeStep = (maxLat - minLat) / 100;
-    const maxRandomOffset = 0.000002; // Adjust this value to control the randomness
+    const longitudeStep = (maxLng - minLng) / 150;
+    const latitudeStep = (maxLat - minLat) / 150;
+    const maxRandomOffset = 0.000002;
 
     const isPointInBufferedPolygon = (point) => {
       const pt = turf.point([point.longitude, point.latitude]);
@@ -233,7 +233,7 @@ const FarmRouteOptimizer = () => {
     setOptimalRoute(null);
     setImplementWidth("");
     setSavingsPercent(null);
-    setSelectedCrop(""); // Reset selected crop
+    setSelectedCrop("");
   };
 
   return (
@@ -343,7 +343,8 @@ const FarmRouteOptimizer = () => {
           <View className="flex-row items-center justify-center">
             <Ionicons name="leaf-outline" size={20} color="#00b890" />
             <Text className="text-white text-center font-pmedium ml-2">
-              Using this path, you can save {savingsPercent}% of fertilizer
+              Using this path, you can save {savingsPercent}% of fertilizer for{" "}
+              {selectedCrop}
             </Text>
           </View>
         </View>
@@ -366,16 +367,13 @@ const FarmRouteOptimizer = () => {
           </View>
         </View>
 
-        {/* Crop Selection Dropdown */}
         <View className="mb-4">
           <Text className="text-white font-pmedium mb-2">Select Crop</Text>
           <View className="bg-background rounded-lg overflow-hidden">
             <Picker
               selectedValue={selectedCrop}
               style={{ color: "white" }}
-              onValueChange={(itemValue, itemIndex) =>
-                setSelectedCrop(itemValue)
-              }
+              onValueChange={(itemValue) => setSelectedCrop(itemValue)}
             >
               {cropOptions.map((crop, index) => (
                 <Picker.Item
