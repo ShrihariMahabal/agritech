@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
+    "@google/generative-ai": "^0.24.0",
     "@gorhom/bottom-sheet": "^5.0.6",
     "@mapbox/polyline": "^1.2.1",
     "@react-native-community/geolocation": "^3.4.0",
@@ -23,6 +24,7 @@
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/native": "^7.0.14",
     "@turf/turf": "^7.2.0",
+    "@vitalets/google-translate-api": "^9.2.1",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
@@ -35,6 +37,7 @@
     "expo-linking": "7.0.5",
     "expo-location": "~18.0.8",
     "expo-router": "~4.0.19",
+    "expo-speech": "~13.0.1",
     "expo-splash-screen": "~0.29.22",
     "expo-status-bar": "^2.0.1",
     "expo-symbols": "0.2.2",
