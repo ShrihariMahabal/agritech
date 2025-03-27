@@ -10,12 +10,13 @@ import {
   PermissionsAndroid,
   Alert,
   StatusBar,
+  // Picker, // REMOVE this line
 } from "react-native";
+import { Picker } from "@react-native-picker/picker"; // This one is correct
 import * as turf from "@turf/turf";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-
 const FarmRouteOptimizer = () => {
   const [farmLand, setFarmLand] = useState([]);
   const [optimalRoute, setOptimalRoute] = useState(null);
@@ -28,6 +29,16 @@ const FarmRouteOptimizer = () => {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+  const [selectedCrop, setSelectedCrop] = useState(""); // State for selected crop
+  const cropOptions = [
+    "",
+    "Wheat",
+    "Rice",
+    "Sugarcane",
+    "Cotton",
+    "Soybean",
+    "Other",
+  ]; // Crop options, including an empty default
 
   useEffect(() => {
     getCurrentLocation();
@@ -222,6 +233,7 @@ const FarmRouteOptimizer = () => {
     setOptimalRoute(null);
     setImplementWidth("");
     setSavingsPercent(null);
+    setSelectedCrop(""); // Reset selected crop
   };
 
   return (
@@ -351,6 +363,28 @@ const FarmRouteOptimizer = () => {
               placeholder="e.g., 2.5"
               placeholderTextColor="#6B7280"
             />
+          </View>
+        </View>
+
+        {/* Crop Selection Dropdown */}
+        <View className="mb-4">
+          <Text className="text-white font-pmedium mb-2">Select Crop</Text>
+          <View className="bg-background rounded-lg overflow-hidden">
+            <Picker
+              selectedValue={selectedCrop}
+              style={{ color: "white" }}
+              onValueChange={(itemValue, itemIndex) =>
+                setSelectedCrop(itemValue)
+              }
+            >
+              {cropOptions.map((crop, index) => (
+                <Picker.Item
+                  key={index}
+                  label={crop || "Select a crop"}
+                  value={crop}
+                />
+              ))}
+            </Picker>
           </View>
         </View>
 
