@@ -34,6 +34,8 @@ app.use("/refund", refund);
 app.use("/green", green);
 app.use("/videos", videoRoutes); // Mount your existing video routes
 
+const sensor = require("./routes/handleSensor");
+app.use("/sensor", sensor);
 // Test Route
 app.get("/", (req, res) => {
   res.json({ message: "🚀 Express Server is Running!" });
