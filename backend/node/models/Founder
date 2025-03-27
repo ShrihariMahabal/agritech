@@ -1,0 +1,15 @@
+const mongoose = require("mongoose");
+
+const founderSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    bio: { type: String },
+    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
+    meetings: [{ type: mongoose.Schema.Types.ObjectId, ref: "Meeting" }], 
+    impact_score: { type: Number, default: 0 }, 
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Founder", founderSchema);

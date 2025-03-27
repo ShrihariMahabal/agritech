@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Svg, Polygon as SvgPolygon, Circle, Text as SvgText } from 'react-native-svg';
 import { useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Farm health analysis constants
@@ -118,6 +117,7 @@ const RouteScreen = () => {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   }, []);
 
+  // Main initialization useEffect
   useEffect(() => {
     // Prevent duplicate initialization
     if (initializationRef.current) return;
@@ -363,93 +363,107 @@ const RouteScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#607D8B" />
-          <Text style={styles.loadingText}>Processing farm sectors...</Text>
+      <SafeAreaView className="flex-1 bg-background justify-center items-center">
+        <View className="items-center">
+          <ActivityIndicator size="large" color="#00b890" />
+          <Text className="mt-3 text-primary text-lg">Processing farm sectors...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <ScrollView>
         {/* Header */}
-        <View style={styles.headerContainer}>
-          <LinearGradient
-            colors={['#455A64', '#607D8B']}
-            style={styles.headerGradient}
-          >
-            <Text style={styles.headerTitle}>Farm Sector Analysis</Text>
-            {/* <Text style={styles.headerSubtitle}>
-              {sectors.length} IoT devices monitoring your farm
-            </Text> */}
-          </LinearGradient>
+        <View className="bg-surface/80 px-4 py-5">
+          <Text className="text-white text-xl font-psemibold">
+            Farm Analysis
+          </Text>
+          <Text className="text-gray-400 text-sm font-pregular mt-1">
+            Real-time monitoring and health status
+          </Text>
         </View>
 
         {/* SVG Heatmap */}
-        <View style={styles.mapContainer}>
+        <View className="h-80 bg-surface/60 rounded-3xl mx-3 mt-4 mb-2 overflow-hidden border border-surface">
           <Svg
             ref={svgRef}
             width="100%"
             height="100%"
             viewBox={svgViewBox}
-            style={styles.svg}
+            className="rounded-3xl"
           >
             {renderFarmVisualization()}
           </Svg>
         </View>
 
         {/* Legend */}
-        <View style={styles.legendContainer}>
-          <Text style={styles.legendTitle}>Treatment Indicators</Text>
-          <View style={styles.legendItems}>
+        <View className="bg-surface/60 rounded-2xl mx-3 p-4 border border-surface">
+          <Text className="text-white font-pmedium text-base mb-3">
+            Health Indicators
+          </Text>
+          <View className="flex-row flex-wrap">
             {Object.entries(HEALTH_STATES).map(([key, value]) => (
-              <View key={key} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: value.color }]} />
-                <Text style={styles.legendText}>{value.label}</Text>
+              <View key={key} className="w-1/2 flex-row items-center mb-2.5 pr-2">
+                <View 
+                  className="w-3 h-3 rounded-full mr-2" 
+                  style={{ backgroundColor: value.color }} 
+                />
+                <Text className="text-gray-300 text-sm font-pregular">{value.label}</Text>
               </View>
             ))}
           </View>
         </View>
 
         {/* Sector Details */}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailsTitle}>
-            Farm Health Overview
+        <View className="px-3 py-4">
+          <Text className="text-white font-pmedium text-base mb-3 px-1">
+            Sector Overview
           </Text>
 
           {/* Sector Stats */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            className="flex-row"
+          >
             {sectors.map((sector, index) => (
               <TouchableOpacity
                 key={sector.id}
-                style={[
-                  styles.statCard,
-                  selectedSector?.id === sector.id && styles.selectedStatCard,
-                  { borderLeftColor: HEALTH_STATES[sector.health].color }
-                ]}
+                className={`
+                  bg-surface/60 
+                  rounded-2xl 
+                  p-4 
+                  mr-3 
+                  w-36
+                  border border-surface
+                  ${selectedSector?.id === sector.id ? 'bg-surface/90' : ''}
+                `}
                 onPress={() => handleSectorPress(sector)}
               >
-                <View style={styles.statHeader}>
-                  <View style={styles.statNumber}>
-                    <Text style={styles.statNumberText}>{index + 1}</Text>
+                <View className="flex-row justify-between items-center mb-3">
+                  <View className="bg-surface/90 w-7 h-7 rounded-full justify-center items-center">
+                    <Text className="text-primary font-pbold">{index + 1}</Text>
                   </View>
                   <MaterialCommunityIcons
                     name={HEALTH_STATES[sector.health].icon}
-                    size={24}
+                    size={22}
                     color={HEALTH_STATES[sector.health].color}
                   />
                 </View>
-                <Text style={styles.statTitle}>{HEALTH_STATES[sector.health].label}</Text>
-                <View style={styles.statDetails}>
-                  <Text style={styles.statDetailText}>
-                    Moisture: {sector.data.moisture}%
-                  </Text>
-                  <Text style={styles.statDetailText}>
-                    Temp: {sector.data.temperature}°C
-                  </Text>
+                <Text className="text-white font-pmedium text-sm mb-2">
+                  {HEALTH_STATES[sector.health].label}
+                </Text>
+                <View className="space-y-1">
+                  <View className="flex-row justify-between">
+                    <Text className="text-gray-400 text-xs font-pregular">Moisture</Text>
+                    <Text className="text-gray-300 text-xs font-pmedium">{sector.data.moisture}%</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-gray-400 text-xs font-pregular">Temperature</Text>
+                    <Text className="text-gray-300 text-xs font-pmedium">{sector.data.temperature}°C</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
@@ -459,154 +473,5 @@ const RouteScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  headerContainer: {
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    marginTop: 25,
-  },
-  headerGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#607D8B',
-  },
-  mapContainer: {
-    height: SCREEN_HEIGHT * 0.4,
-    backgroundColor: '#1a1a2e', // Dark background for better visualization
-    overflow: 'hidden',
-    borderRadius: 20,
-    margin: 12,
-  },
-  svg: {
-    borderRadius: 20,
-  },
-  legendContainer: {
-    margin: 12,
-    padding: 12,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  legendTitle: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  legendItems: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '50%',
-    marginBottom: 6,
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#333',
-  },
-  detailsContainer: {
-    padding: 12,
-  },
-  detailsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 10,
-    width: 120,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    borderLeftWidth: 4,
-  },
-  selectedStatCard: {
-    backgroundColor: '#f0f9ff',
-  },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statNumberText: {
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  statTitle: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    marginBottom: 6,
-  },
-  statDetails: {
-    marginTop: 4,
-  },
-  statDetailText: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-  },
-});
 
 export default RouteScreen;

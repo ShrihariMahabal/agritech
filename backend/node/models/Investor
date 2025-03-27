@@ -1,0 +1,14 @@
+const mongoose = require("mongoose");
+const investorSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  totFunds: { type: Number, default: 0 },
+  investments: [
+    {
+      project: { type: mongoose.Schema.Types.ObjectId, ref: "Project" },
+      amount: { type: Number, required: true },
+    },
+  ], // Tracks how much they invested in which projects
+});
+
+module.exports = mongoose.model("Investor", investorSchema);
