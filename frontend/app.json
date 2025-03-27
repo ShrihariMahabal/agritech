@@ -15,7 +15,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We need your location to display your position on the map."
+        "NSLocationWhenInUseUsageDescription": "We need your location to display your position on the map.",
+        "NSCameraUsageDescription": "This app needs access to camera to record videos",
+        "NSMicrophoneUsageDescription": "This app needs access to microphone for video recording",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photos to select videos"
       }
     },
     "android": {
@@ -23,9 +26,14 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -45,10 +53,15 @@
         }
       ],
       "expo-font",
-      "expo-speech-recognition"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-speech-recognition",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+        }
+      ]
+    ]
   }
 }
