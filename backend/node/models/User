@@ -1,0 +1,51 @@
+const mongoose = require("mongoose");
+
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: [true, "must provide name"] },
+  email: { type: String, required: [true, "must provide Email"] },
+  password: { type: String, required: true },
+  user_steps: { type: Number, default: 1000 },
+  carbonFootprint: {
+    // Modified carbonFootprint field to store an object
+    travel: { type: Number, default: 0 },
+    electricity: { type: Number, default: 0 }, // Corrected spelling to 'electricity'
+    gas: { type: Number, default: 0 },
+  },
+  analysisResults: [
+    {
+      bill_type: String,
+      bill_provider: String,
+      billing_period: String,
+      consumption: {
+        value: Number,
+        unit: String,
+        previous_value: Number,
+      },
+      amount: {
+        value: Number,
+        currency: String,
+      },
+      consumption_rating: String,
+      consumption_per_person: Number,
+      regional_average_per_person: Number,
+      percentage_diff_from_average: Number,
+      seasonal_factor: Number,
+      sustainability_score: Number,
+      key_insights: [String],
+      recommendations: [String],
+      estimated_savings_potential: {
+        value: Number,
+        unit: String,
+      },
+      carbon_emissions: {
+        value: Number,
+        unit: String,
+      },
+    },
+  ],
+  invested: {type: Number},
+  public_trips : {type : Number},
+}); //schema for collection
+
+module.exports = mongoose.model("User", UserSchema); //model is the wrapper for schema
+//mongoose model provides an interface with the mongo db, to perform CRUD
