@@ -87,10 +87,10 @@ export default function Layout() {
                   padding: 4,
                 }}
               >
-                <Ionicons name="airplane" color={color} size={22} />
+                <Ionicons name="leaf" color={color} size={22} />
               </View>
             ),
-            tabBarLabel: "Travel",
+            tabBarLabel: "Farm",
             headerShown: false,
           }}
         />
@@ -110,10 +110,10 @@ export default function Layout() {
                   padding: 4,
                 }}
               >
-                <Ionicons name="trending-up" color={color} size={22} />
+                <Ionicons name="cash" color={color} size={22} />
               </View>
             ),
-            tabBarLabel: "Community",
+            tabBarLabel: "Loans",
             headerShown: false,
           }}
         />
