@@ -112,10 +112,46 @@ const FarmRouteOptimizer = () => {
     }
 
     const closedFarmLand = [...farmLand, farmLand[0]];
-    const minLng = Math.min(...farmLand.map((p) => p.longitude));
-    const maxLng = Math.max(...farmLand.map((p) => p.longitude));
-    const minLat = Math.min(...farmLand.map((p) => p.latitude));
-    const maxLat = Math.max(...farmLand.map((p) => p.latitude));
+    const farmPolygon = turf.polygon([
+      closedFarmLand.map((p) => [p.longitude, p.latitude]),
+    ]);
+
+    // Define a small buffer inwards to simulate headlands (adjust the value as needed)
+    const headlandDistanceMeters = parseFloat(implementWidth) * 2; // Example: 2 times the implement width
+    const normalizedHeadlandDistance = headlandDistanceMeters * 0.00001; // Rough normalization
+
+    const bufferedPolygon = turf.buffer(
+      farmPolygon,
+      -normalizedHeadlandDistance,
+      {
+        units: "degrees", // Using degrees as map units here (approximation)
+      }
+    );
+
+    if (
+      !bufferedPolygon ||
+      !bufferedPolygon.geometry ||
+      !bufferedPolygon.geometry.coordinates ||
+      bufferedPolygon.geometry.coordinates.length === 0
+    ) {
+      Alert.alert(
+        "Warning",
+        "The farm area might be too small for the specified implement width and headland distance."
+      );
+      setOptimalRoute([]);
+      return;
+    }
+
+    const [bufferedPolygonCoordinates] = bufferedPolygon.geometry.coordinates;
+    const bufferedFarmLand = bufferedPolygonCoordinates.map((coord) => ({
+      longitude: coord[0],
+      latitude: coord[1],
+    }));
+
+    const minLng = Math.min(...bufferedFarmLand.map((p) => p.longitude));
+    const maxLng = Math.max(...bufferedFarmLand.map((p) => p.longitude));
+    const minLat = Math.min(...bufferedFarmLand.map((p) => p.latitude));
+    const maxLat = Math.max(...bufferedFarmLand.map((p) => p.latitude));
 
     const farmWidth = maxLng - minLng;
     const farmHeight = maxLat - minLat;
@@ -125,14 +161,25 @@ const FarmRouteOptimizer = () => {
 
     const longitudeStep = (maxLng - minLng) / 100;
     const latitudeStep = (maxLat - minLat) / 100;
+    const maxRandomOffset = 0.000002; // Adjust this value to control the randomness
+
+    const isPointInBufferedPolygon = (point) => {
+      const pt = turf.point([point.longitude, point.latitude]);
+      return turf.booleanPointInPolygon(pt, bufferedPolygon);
+    };
 
     if (isHorizontal) {
       for (let lat = minLat; lat <= maxLat; lat += normalizedImplementWidth) {
         const linePath = [];
         for (let lng = minLng; lng <= maxLng; lng += longitudeStep) {
-          const point = { longitude: lng, latitude: lat };
-          if (isPointInPolygon(point, farmLand)) {
-            linePath.push(point);
+          const basePoint = { longitude: lng, latitude: lat };
+          if (isPointInBufferedPolygon(basePoint)) {
+            const randomLngOffset = (Math.random() - 0.5) * maxRandomOffset;
+            const randomLatOffset = (Math.random() - 0.5) * maxRandomOffset;
+            linePath.push({
+              longitude: basePoint.longitude + randomLngOffset,
+              latitude: basePoint.latitude + randomLatOffset,
+            });
           }
         }
         if (linePath.length > 1) lines.push(linePath);
@@ -141,9 +188,14 @@ const FarmRouteOptimizer = () => {
       for (let lng = minLng; lng <= maxLng; lng += normalizedImplementWidth) {
         const linePath = [];
         for (let lat = minLat; lat <= maxLat; lat += latitudeStep) {
-          const point = { longitude: lng, latitude: lat };
-          if (isPointInPolygon(point, farmLand)) {
-            linePath.push(point);
+          const basePoint = { longitude: lng, latitude: lat };
+          if (isPointInBufferedPolygon(basePoint)) {
+            const randomLngOffset = (Math.random() - 0.5) * maxRandomOffset;
+            const randomLatOffset = (Math.random() - 0.5) * maxRandomOffset;
+            linePath.push({
+              longitude: basePoint.longitude + randomLngOffset,
+              latitude: basePoint.latitude + randomLatOffset,
+            });
           }
         }
         if (linePath.length > 1) lines.push(linePath);
@@ -266,7 +318,7 @@ const FarmRouteOptimizer = () => {
               </Marker>
               <Polyline
                 coordinates={optimalRoute}
-                strokeColor="rgba(255, 0, 0, 0.5)"
+                strokeColor="rgba(101, 67, 33, 0.7)"
                 strokeWidth={3}
               />
             </>
@@ -289,7 +341,7 @@ const FarmRouteOptimizer = () => {
         <View className="flex-row items-center mb-4">
           <View className="flex-1">
             <Text className="text-white font-pmedium mb-2">
-              Implement Width (meters)
+              Tractor Width (meters)
             </Text>
             <TextInput
               className="bg-background text-white px-4 py-2 rounded-lg"
@@ -330,5 +382,14 @@ const FarmRouteOptimizer = () => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  map: {
+    flex: 1,
+  },
+});
 
 export default FarmRouteOptimizer;
