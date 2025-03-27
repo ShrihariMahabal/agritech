@@ -1,0 +1,36 @@
+const mongoose = require("mongoose");
+
+const projectSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    shortDescription: { type: String }, // Added short description field
+    description: { type: String },
+    industry: { type: String },
+    imageUri: { type: String }, // Added image URI field
+    fundingGoal: { type: Number, required: true }, // Goal amount
+    raisedAmount: { type: Number, default: 0 }, // Current investment
+    founder: { type: mongoose.Schema.Types.ObjectId, ref: "Founder", required: true },
+    investors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investor" }], // Multiple investors
+    sustainability_score: { type: Number, default: 0 },
+    trustScore: { type: Number, default: 0, min: 0, max: 100 }, // Added trust score field (0-100)
+    progress: [
+      {
+        phaseName: { type: String, required: true },
+        tasks: [
+          {
+            title: { type: String, required: true },
+            status: { type: String, enum: ["pending", "in-progress", "completed"], default: "pending" },
+          },
+        ],
+        reportUri: { type: String },
+        meetUri: { type: String },
+        meetLikes: { type: Number, default: 0 },
+        meetDislikes: { type: Number, default: 0 },
+        satisfaction: { type: Number, default: 0 }
+      },
+    ], // Added project progress with phases and tasks
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Project", projectSchema);
