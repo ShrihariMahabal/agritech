@@ -161,6 +161,26 @@ export default function Layout() {
             tabBarLabel: "Rewards",
           }}
         />
+        <Tabs.Screen
+          name="learn"
+          options={{
+            tabBarIcon: ({ color }) => (
+              <View
+                style={{
+                  backgroundColor:
+                    color === "#000"
+                      ? "rgba(0, 0, 0, 0.1)"
+                      : "transparent",
+                  borderRadius: 10,
+                  padding: 4,
+                }}
+              >
+                <Ionicons name="book" color={color} size={22} />
+              </View>
+            ),
+            tabBarLabel: "Learn",
+          }}
+        />
       </Tabs>
       <StatusBar barStyle="light-content" backgroundColor="#0f1924" />
     </>

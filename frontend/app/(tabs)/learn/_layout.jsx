@@ -19,10 +19,25 @@ export default function LearnLayout() {
                 }} 
             />
             <Stack.Screen 
-                name="routescreen" 
+                name="upload" 
                 options={{
                     headerShown: false,
-                    headerTitle: 'Available Routes',
+                    headerTitle: 'Upload Video',
+                    headerTitleAlign: 'center',
+                    headerStyle: {
+                        height: 80,
+                    },
+                    headerTitleStyle: {
+                        fontSize: 18,
+                        fontWeight: 'bold',
+                    },
+                }} 
+            />
+            <Stack.Screen 
+                name="video/[id]" 
+                options={{
+                    headerShown: false,
+                    headerTitle: 'Watch Video',
                     headerTitleAlign: 'center',
                     headerStyle: {
                         height: 80,
