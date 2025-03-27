@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { uploadVideo, getVideos, streamVideo, getVideoById, deleteVideo } = require('../controllers/videoController');
+const { uploadVideo, getVideos, streamVideo, getVideoById, deleteVideo,  handleLike, handleDislike} = require('../controllers/videoController');
 
 const router = express.Router();
 
@@ -43,5 +43,7 @@ router.get('/', getVideos);
 router.get('/stream/:filename', streamVideo);
 router.get('/:id', getVideoById);  // Add this line
 router.delete('/:id', deleteVideo);
+router.put('/:id/like', handleLike);
+router.put('/:id/dislike', handleDislike);
 
 module.exports = router;

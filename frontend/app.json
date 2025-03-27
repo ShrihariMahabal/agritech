@@ -53,6 +53,7 @@
         }
       ],
       "expo-font",
+      "expo-speech-recognition",
       [
         "expo-image-picker",
         {

@@ -1,21 +1,40 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Svg, Polygon as SvgPolygon, Circle, Text as SvgText } from 'react-native-svg';
-import { useLocalSearchParams } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Dimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Svg,
+  Polygon as SvgPolygon,
+  Circle,
+  Text as SvgText,
+} from "react-native-svg";
+import { useLocalSearchParams } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // Farm health analysis constants
-const HEALTH_STATES = {
-  HEALTHY: { color: '#2ecc71', label: 'Healthy', icon: 'leaf' },
-  INSECTS: { color: '#e74c3c', label: 'Insect Infestation', icon: 'bug' },
-  WATER_NEEDED: { color: '#3498db', label: 'Water Needed', icon: 'water' },
-  NUTRIENT_DEFICIENT: { color: '#f39c12', label: 'Nutrient Deficient', icon: 'nutrition' },
-  WEED_CONTROL: { color: '#9b59b6', label: 'Weed Control Needed', icon: 'sprout' },
-  DISEASE: { color: '#c0392b', label: 'Disease Detected', icon: 'biohazard' },
+const HEALTH_STATES_BASE = {
+  HEALTHY: { color: "#2ecc71", label: "Healthy", icon: "leaf" },
+  INSECTS: { color: "#e74c3c", label: "Insect Infestation", icon: "bug" },
+  NUTRIENT_DEFICIENT: {
+    color: "#f39c12",
+    label: "Nutrient Deficient",
+    icon: "nutrition",
+  },
+  WEED_CONTROL: {
+    color: "#9b59b6",
+    label: "Weed Control Needed",
+    icon: "sprout",
+  },
+  DISEASE: { color: "#c0392b", label: "Disease Detected", icon: "biohazard" },
 };
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const RouteScreen = () => {
   const params = useLocalSearchParams();
@@ -23,17 +42,52 @@ const RouteScreen = () => {
   const [sectors, setSectors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSector, setSelectedSector] = useState(null);
-  const [svgViewBox, setSvgViewBox] = useState('0 0 1000 1000');
+  const [svgViewBox, setSvgViewBox] = useState("0 0 1000 1000");
   const [svgPoints, setSvgPoints] = useState([]);
   const [voronoiCells, setVoronoiCells] = useState({});
   const svgRef = useRef(null);
   const initializationRef = useRef(false);
+  const [biggestSectorId, setBiggestSectorId] = useState(null);
+  const [waterNeededColor, setWaterNeededColor] = useState("pink"); // State for water needed color
+  const [moisture, setMoisture] = useState(0); // State for moisture
+
+  // Dynamically create HEALTH_STATES using the state for WATER_NEEDED
+  const HEALTH_STATES = {
+    ...HEALTH_STATES_BASE,
+    WATER_NEEDED: {
+      color: waterNeededColor,
+      label: "Moisture",
+      icon: "water",
+    },
+  };
+
+  // Fetch color from API every 2 seconds
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await fetch("http://localhost:8000/sensor/color");
+        if (response.ok) {
+          const data = await response.json();
+          console.log(data.color);
+          setWaterNeededColor(data.color);
+          setMoisture(data.moisture);
+        } else {
+          console.error("Failed to fetch color from API");
+        }
+      } catch (error) {
+        console.error("Error fetching color from API:", error);
+      }
+    }, 2000); // 2000 milliseconds = 2 seconds
+
+    // Cleanup function to clear the interval when the component unmounts
+    return () => clearInterval(intervalId);
+  }, []); // Empty dependency array means this effect runs only once after the initial render
 
   // Convert geo coordinates to SVG coordinates
   const convertToSvgCoords = useCallback((points) => {
     // Calculate bounding box
-    const lats = points.map(p => p.latitude);
-    const lngs = points.map(p => p.longitude);
+    const lats = points.map((p) => p.latitude);
+    const lngs = points.map((p) => p.longitude);
 
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
@@ -45,8 +99,8 @@ const RouteScreen = () => {
     const latRange = (maxLat - minLat) * (1 + padding);
     const lngRange = (maxLng - minLng) * (1 + padding);
 
-    const padMinLat = minLat - (latRange * padding / 2);
-    const padMinLng = minLng - (lngRange * padding / 2);
+    const padMinLat = minLat - (latRange * padding) / 2;
+    const padMinLng = minLng - (lngRange * padding) / 2;
 
     // Calculate aspect ratio to maintain proportions
     const aspectRatio = lngRange / latRange;
@@ -57,10 +111,11 @@ const RouteScreen = () => {
     setSvgViewBox(`0 0 ${svgWidth} ${svgHeight}`);
 
     // Convert coordinates
-    return points.map(point => {
+    return points.map((point) => {
       const x = ((point.longitude - padMinLng) / lngRange) * svgWidth;
       // Flip Y coordinates because SVG Y increases downward
-      const y = svgHeight - ((point.latitude - padMinLat) / latRange) * svgHeight;
+      const y =
+        svgHeight - ((point.latitude - padMinLat) / latRange) * svgHeight;
       return { x, y };
     });
   }, []);
@@ -69,13 +124,13 @@ const RouteScreen = () => {
   const calculateCentroid = useCallback((points) => {
     let sumX = 0;
     let sumY = 0;
-    points.forEach(point => {
+    points.forEach((point) => {
       sumX += point.x;
       sumY += point.y;
     });
     return {
       x: sumX / points.length,
-      y: sumY / points.length
+      y: sumY / points.length,
     };
   }, []);
 
@@ -88,8 +143,9 @@ const RouteScreen = () => {
       const xj = polygon[j].x;
       const yj = polygon[j].y;
 
-      const intersect = ((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      const intersect =
+        yi > point.y !== yj > point.y &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
 
       if (intersect) inside = !inside;
     }
@@ -108,7 +164,7 @@ const RouteScreen = () => {
 
     return {
       x: x1 + ua * (x2 - x1),
-      y: y1 + ua * (y2 - y1)
+      y: y1 + ua * (y2 - y1),
     };
   }, []);
 
@@ -116,6 +172,27 @@ const RouteScreen = () => {
   const distance2D = useCallback((x1, y1, x2, y2) => {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   }, []);
+
+  const getBiggestSectorIndex = useCallback(() => {
+    if (!voronoiCells || Object.keys(voronoiCells).length === 0) {
+      return -1;
+    }
+
+    let biggestSectorIndexLocal = -1;
+    let maxPoints = -1;
+    let index = 0;
+
+    for (const sectorId in voronoiCells) {
+      const cell = voronoiCells[sectorId];
+      if (cell.points.length > maxPoints) {
+        maxPoints = cell.points.length;
+        biggestSectorIndexLocal = parseInt(sectorId.split("-")[1], 10);
+      }
+      index++;
+    }
+
+    return biggestSectorIndexLocal;
+  }, [voronoiCells]);
 
   // Main initialization useEffect
   useEffect(() => {
@@ -134,10 +211,10 @@ const RouteScreen = () => {
     } else {
       // For development/testing - use sample data if no params provided
       points = [
-        { "latitude": 19.18568815598173, "longitude": 72.96239107847214 },
-        { "latitude": 19.185819250844453, "longitude": 72.96389110386372 },
-        { "latitude": 19.183209050149493, "longitude": 72.96419218182564 },
-        { "latitude": 19.182968389018917, "longitude": 72.96224322170019 }
+        { latitude: 19.18568815598173, longitude: 72.96239107847214 },
+        { latitude: 19.185819250844453, longitude: 72.96389110386372 },
+        { latitude: 19.183209050149493, longitude: 72.96419218182564 },
+        { latitude: 19.182968389018917, longitude: 72.96224322170019 },
       ];
     }
 
@@ -160,7 +237,7 @@ const RouteScreen = () => {
     // Use an offset centroid as the first point
     sectorPoints.push({
       x: centroid.x * 0.8 + convertedPoints[0].x * 0.2,
-      y: centroid.y * 0.8 + convertedPoints[0].y * 0.2
+      y: centroid.y * 0.8 + convertedPoints[0].y * 0.2,
     });
 
     // Generate additional points along rays from centroid
@@ -172,7 +249,7 @@ const RouteScreen = () => {
       // Start with a point along the ray
       let point = {
         x: centroid.x + Math.cos(angle) * 1000, // large enough to be outside
-        y: centroid.y + Math.sin(angle) * 1000
+        y: centroid.y + Math.sin(angle) * 1000,
       };
 
       // Intersect with polygon edges to find boundary
@@ -187,12 +264,23 @@ const RouteScreen = () => {
 
         // Simple line-line intersection
         const intersection = lineIntersection(
-          centroid.x, centroid.y, point.x, point.y,
-          edgeStart.x, edgeStart.y, edgeEnd.x, edgeEnd.y
+          centroid.x,
+          centroid.y,
+          point.x,
+          point.y,
+          edgeStart.x,
+          edgeStart.y,
+          edgeEnd.x,
+          edgeEnd.y
         );
 
         if (intersection) {
-          const dist = distance2D(centroid.x, centroid.y, intersection.x, intersection.y);
+          const dist = distance2D(
+            centroid.x,
+            centroid.y,
+            intersection.x,
+            intersection.y
+          );
           if (dist < minDist) {
             minDist = dist;
             edgePoint = intersection;
@@ -204,32 +292,25 @@ const RouteScreen = () => {
         // Place point between centroid and edge
         sectorPoints.push({
           x: centroid.x + (edgePoint.x - centroid.x) * distance,
-          y: centroid.y + (edgePoint.y - centroid.y) * distance
+          y: centroid.y + (edgePoint.y - centroid.y) * distance,
         });
       }
     }
 
     // Generate random "health" status for each sector
-    const healthStates = Object.keys(HEALTH_STATES);
+    const healthStatesBase = Object.keys(HEALTH_STATES_BASE);
 
     // Create the sectors with random health states
     const newSectors = sectorPoints.map((point, index) => {
-      // Randomly assign health status, with higher probability for healthy
-      const randomStatus = Math.random();
       let healthStatus;
+      const biggestIndex = getBiggestSectorIndex();
 
-      if (randomStatus < 0.3) {
-        healthStatus = 'HEALTHY';
-      } else if (randomStatus < 0.45) {
-        healthStatus = 'WATER_NEEDED';
-      } else if (randomStatus < 0.6) {
-        healthStatus = 'NUTRIENT_DEFICIENT';
-      } else if (randomStatus < 0.75) {
-        healthStatus = 'WEED_CONTROL';
-      } else if (randomStatus < 0.9) {
-        healthStatus = 'INSECTS';
+      if (index === biggestIndex) {
+        healthStatus = "WATER_NEEDED";
       } else {
-        healthStatus = 'DISEASE';
+        // Randomly assign health status, excluding WATER_NEEDED
+        const randomIndex = Math.floor(Math.random() * healthStatesBase.length);
+        healthStatus = healthStatesBase[randomIndex];
       }
 
       return {
@@ -240,8 +321,8 @@ const RouteScreen = () => {
           moisture: Math.floor(Math.random() * 100),
           temperature: Math.floor(Math.random() * 15) + 20,
           nutrientLevel: Math.floor(Math.random() * 100),
-          lastUpdated: new Date().toISOString()
-        }
+          lastUpdated: new Date().toISOString(),
+        },
       };
     });
 
@@ -249,16 +330,16 @@ const RouteScreen = () => {
 
     // Create a grid of points across the SVG area to form Voronoi cells
     const cellSize = 10; // Resolution of the grid
-    const viewBoxParts = svgViewBox.split(' ').map(Number);
+    const viewBoxParts = svgViewBox.split(" ").map(Number);
     const svgWidth = viewBoxParts[2];
     const svgHeight = viewBoxParts[3];
 
     // Map each point to nearest sector center
     const cells = {};
-    newSectors.forEach(sector => {
+    newSectors.forEach((sector) => {
       cells[sector.id] = {
         sector: sector,
-        points: []
+        points: [],
       };
     });
 
@@ -274,8 +355,13 @@ const RouteScreen = () => {
         let closestSector = null;
         let minDist = Infinity;
 
-        newSectors.forEach(sector => {
-          const dist = distance2D(point.x, point.y, sector.centroid.x, sector.centroid.y);
+        newSectors.forEach((sector) => {
+          const dist = distance2D(
+            point.x,
+            point.y,
+            sector.centroid.x,
+            sector.centroid.y
+          );
           if (dist < minDist) {
             minDist = dist;
             closestSector = sector;
@@ -290,7 +376,26 @@ const RouteScreen = () => {
 
     setVoronoiCells(cells);
     setLoading(false);
-  }, [convertToSvgCoords, calculateCentroid, lineIntersection, distance2D, isPointInPolygon, params.polygonData, svgViewBox]);
+  }, [
+    convertToSvgCoords,
+    calculateCentroid,
+    lineIntersection,
+    distance2D,
+    isPointInPolygon,
+    params.polygonData,
+    svgViewBox,
+    getBiggestSectorIndex,
+    waterNeededColor, // Added as a dependency
+  ]);
+
+  useEffect(() => {
+    if (!loading && voronoiCells && Object.keys(voronoiCells).length > 0) {
+      const biggestIndex = getBiggestSectorIndex();
+      if (biggestIndex !== -1) {
+        setBiggestSectorId(`sector-${biggestIndex}`);
+      }
+    }
+  }, [loading, voronoiCells, getBiggestSectorIndex]);
 
   // Handle sector selection
   const handleSectorPress = useCallback((sector) => {
@@ -299,11 +404,15 @@ const RouteScreen = () => {
 
   // Generate SVG elements for the farm visualization
   const renderFarmVisualization = useCallback(() => {
-    if (!svgPoints.length || !sectors.length || Object.keys(voronoiCells).length === 0) {
+    if (
+      !svgPoints.length ||
+      !sectors.length ||
+      Object.keys(voronoiCells).length === 0
+    ) {
       return null;
     }
 
-    const polygonPointsString = svgPoints.map(p => `${p.x},${p.y}`).join(' ');
+    const polygonPointsString = svgPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
     return (
       <>
@@ -321,8 +430,14 @@ const RouteScreen = () => {
             {cell.points.map((point, i) => (
               <SvgPolygon
                 key={`${cell.sector.id}-point-${i}`}
-                points={`${point.x},${point.y} ${point.x + 10},${point.y} ${point.x + 10},${point.y + 10} ${point.x},${point.y + 10}`}
-                fill={HEALTH_STATES[cell.sector.health].color}
+                points={`${point.x},${point.y} ${point.x + 10},${point.y} ${
+                  point.x + 10
+                },${point.y + 10} ${point.x},${point.y + 10}`}
+                fill={
+                  cell.sector.id === biggestSectorId
+                    ? waterNeededColor // Use the state for the biggest sector's color
+                    : HEALTH_STATES[cell.sector.health].color
+                }
                 fillOpacity="0.8"
                 stroke="none"
               />
@@ -359,21 +474,33 @@ const RouteScreen = () => {
         ))}
       </>
     );
-  }, [sectors, svgPoints, voronoiCells]);
+  }, [
+    sectors,
+    svgPoints,
+    voronoiCells,
+    biggestSectorId,
+    HEALTH_STATES,
+    waterNeededColor,
+  ]); // Added waterNeededColor as a dependency
 
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
         <View className="items-center">
           <ActivityIndicator size="large" color="#00b890" />
-          <Text className="mt-3 text-primary text-lg">Processing farm sectors...</Text>
+          <Text className="mt-3 text-primary text-lg">
+            Processing farm sectors...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      className="flex-1 bg-background"
+      edges={["top", "left", "right"]}
+    >
       <ScrollView>
         {/* Header */}
         <View className="bg-surface/80 px-4 py-5">
@@ -405,12 +532,18 @@ const RouteScreen = () => {
           </Text>
           <View className="flex-row flex-wrap">
             {Object.entries(HEALTH_STATES).map(([key, value]) => (
-              <View key={key} className="w-1/2 flex-row items-center mb-2.5 pr-2">
-                <View 
-                  className="w-3 h-3 rounded-full mr-2" 
-                  style={{ backgroundColor: value.color }} 
+              <View
+                key={key}
+                className="w-1/2 flex-row items-center mb-2.5 pr-2"
+              >
+                <View
+                  className="w-3 h-3 rounded-full mr-2"
+                  style={{ backgroundColor: value.color }}
                 />
-                <Text className="text-gray-300 text-sm font-pregular">{value.label}</Text>
+                <Text className="text-gray-300 text-sm font-pregular">
+                  {value.label}
+                  {value.label === "Moisture" && `:  ${moisture}%`}
+                </Text>
               </View>
             ))}
           </View>
@@ -423,8 +556,8 @@ const RouteScreen = () => {
           </Text>
 
           {/* Sector Stats */}
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             className="flex-row"
           >
@@ -432,13 +565,13 @@ const RouteScreen = () => {
               <TouchableOpacity
                 key={sector.id}
                 className={`
-                  bg-surface/60 
-                  rounded-2xl 
-                  p-4 
-                  mr-3 
+                  bg-surface/60
+                  rounded-2xl
+                  p-4
+                  mr-3
                   w-36
                   border border-surface
-                  ${selectedSector?.id === sector.id ? 'bg-surface/90' : ''}
+                  ${selectedSector?.id === sector.id ? "bg-surface/90" : ""}
                 `}
                 onPress={() => handleSectorPress(sector)}
               >
@@ -457,12 +590,20 @@ const RouteScreen = () => {
                 </Text>
                 <View className="space-y-1">
                   <View className="flex-row justify-between">
-                    <Text className="text-gray-400 text-xs font-pregular">Moisture</Text>
-                    <Text className="text-gray-300 text-xs font-pmedium">{sector.data.moisture}%</Text>
+                    <Text className="text-gray-400 text-xs font-pregular">
+                      Moisture
+                    </Text>
+                    <Text className="text-gray-300 text-xs font-pmedium">
+                      {sector.data.moisture}%
+                    </Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-gray-400 text-xs font-pregular">Temperature</Text>
-                    <Text className="text-gray-300 text-xs font-pmedium">{sector.data.temperature}°C</Text>
+                    <Text className="text-gray-400 text-xs font-pregular">
+                      Temperature
+                    </Text>
+                    <Text className="text-gray-300 text-xs font-pmedium">
+                      {sector.data.temperature}°C
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>

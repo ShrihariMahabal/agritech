@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from neo4j import GraphDatabase
 import logging
 import json
@@ -6,6 +7,7 @@ import google.generativeai as genai
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,12 +44,29 @@ kg = SchemeKnowledgeGraph(URI, "neo4j", "yzfQoAAlR6mX5XL9eaBqJl0oHk-Kuxt3usWSpFI
 
 def generate_explanation_with_gemini(scheme_name):
     prompt = f"""
-    Provide a concise and informative explanation for the government scheme named "{scheme_name}". 
-    Keep it under 100 words.
+    Bhai, ekdum simple aur seedhi baat batao! 
+    Mujhe government scheme **"{scheme_name}"** ke baare mein sab kuch samjha do, lekin ekdum farmers-friendly Hinglish mein.  
+
+    ⚡ **Cover These Points:**  
+    - Yeh scheme kis liye bani hai?  
+    - Kis kisaan ko isse fayda milega?  
+    - Kaise apply karein?  
+    - Kya important conditions hain?  
+    - Kya direct paisa ya subsidy milti hai?  
+
+    🌿 KrishiSeva ek **smart digital saathi** hai jo farmers ki help karta hai. Toh ekdum engaging aur clear jawab chahiye.  
+    Baat lambi nahi ho, **100 words ke andar** samjha do, lekin sab points cover ho.  
     """
+
     model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
-    return response.text.strip() if response and response.text else "Explanation not available."
+
+    if response and response.text:
+        return response.text.strip()
+    else:
+        return "**⚠️ Sorry! Abhi scheme ka exact data available nahi hai.**\n" \
+               "🚜 Aapko jaldi hi latest information milegi! KrishiSeva aapke saath hai! 🌿"
+
 
 @app.route("/get_schemes", methods=["GET"])
 def get_schemes():
@@ -68,8 +87,8 @@ def get_schemes():
         scheme_name = scheme.get("Scheme", "Unknown Scheme")
         explanation = scheme.get("Explanation")
         
-        if not explanation:
-            explanation = generate_explanation_with_gemini(scheme_name)
+        # if not explanation:
+        explanation = generate_explanation_with_gemini(scheme_name)
         
         processed_schemes.append({
             "scheme_name": scheme_name,
@@ -79,4 +98,5 @@ def get_schemes():
     return jsonify(processed_schemes)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+

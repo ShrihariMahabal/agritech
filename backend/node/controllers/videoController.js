@@ -151,7 +151,9 @@ const getVideoById = async (req, res) => {
           data: {
             title: video.title,
             description: video.description,
-            createdAt: video.createdAt
+            createdAt: video.createdAt,
+            likes: video.likes,
+            dislikes: video.dislikes
           } 
         });
       } catch (err) {
@@ -163,4 +165,59 @@ const getVideoById = async (req, res) => {
       }
     };
 
-module.exports = { uploadVideo, getVideos, getVideoById, streamVideo, deleteVideo };
+// Add these functions to your videoController.js
+
+const handleLike = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+    if (!video) {
+      return res.status(404).json({ success: false, message: 'Video not found' });
+    }
+    
+    video.likes += 1;
+    await video.save();
+    
+    res.status(200).json({
+      success: true,
+      data: video
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const handleDislike = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+    if (!video) {
+      return res.status(404).json({ success: false, message: 'Video not found' });
+    }
+    
+    video.dislikes += 1;
+    await video.save();
+    
+    res.status(200).json({
+      success: true,
+      data: video
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Export the new functions
+module.exports = {
+  uploadVideo,
+  getVideos,
+  getVideoById,
+  streamVideo,
+  deleteVideo,
+  handleLike,
+  handleDislike
+};
