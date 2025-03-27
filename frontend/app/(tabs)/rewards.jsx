@@ -41,6 +41,15 @@ const FarmRouteOptimizer = () => {
     "Other",
   ];
 
+  const cropFertilizerRates = {
+    Wheat: 150, // kg/hectare (example rate)
+    Rice: 180, // kg/hectare (example rate)
+    Sugarcane: 200, // kg/hectare (example rate)
+    Cotton: 120, // kg/hectare (example rate)
+    Soybean: 100, // kg/hectare (example rate)
+    Other: 130, // kg/hectare (example rate)
+  };
+
   useEffect(() => {
     getCurrentLocation();
   }, []);
@@ -105,6 +114,45 @@ const FarmRouteOptimizer = () => {
     return turf.booleanPointInPolygon(pt, poly);
   };
 
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371e3; // metres
+    const lat1 = (coord1.latitude * Math.PI) / 180;
+    const lat2 = (coord2.latitude * Math.PI) / 180;
+    const lon1 = (coord1.longitude * Math.PI) / 180;
+    const lon2 = (coord1.longitude * Math.PI) / 180;
+    const deltaLat = lat2 - lat1;
+    const deltaLon = lon2 - lon1;
+
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) *
+        Math.cos(lat2) *
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // in metres
+    return distance;
+  };
+
+  const getBoundingBox = (coordinates) => {
+    if (!coordinates || coordinates.length === 0) {
+      return null;
+    }
+    let minLat = coordinates[0].latitude;
+    let maxLat = coordinates[0].latitude;
+    let minLng = coordinates[0].longitude;
+    let maxLng = coordinates[0].longitude;
+
+    coordinates.forEach((coord) => {
+      minLat = Math.min(minLat, coord.latitude);
+      maxLat = Math.max(maxLat, coord.latitude);
+      minLng = Math.min(minLng, coord.longitude);
+      maxLng = Math.max(maxLng, coord.longitude);
+    });
+
+    return { minLat, maxLat, minLng, maxLng };
+  };
+
   const generateOptimalRoute = () => {
     if (farmLand.length < 3) {
       Alert.alert(
@@ -132,6 +180,9 @@ const FarmRouteOptimizer = () => {
     const farmPolygon = turf.polygon([
       closedFarmLand.map((p) => [p.longitude, p.latitude]),
     ]);
+    const farmAreaSqMeters = turf.area(farmPolygon);
+    const farmAreaHectares = farmAreaSqMeters / 10000;
+    const implementWidthMeters = parseFloat(implementWidth);
 
     const headlandDistanceMeters = parseFloat(implementWidth) * 2;
     const normalizedHeadlandDistance = headlandDistanceMeters * 0.000001;
@@ -150,6 +201,7 @@ const FarmRouteOptimizer = () => {
         "The farm area might be too small for the specified implement width and headland distance."
       );
       setOptimalRoute([]);
+      setSavingsPercent(33);
       return;
     }
 
@@ -218,9 +270,55 @@ const FarmRouteOptimizer = () => {
       .map((line, index) => (index % 2 === 0 ? line : line.slice().reverse()))
       .flat();
 
-    const randomSavings = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
-    setSavingsPercent(randomSavings);
-    setOptimalRoute(optimizedRoute);
+    setOptimalRoute(optimizedRoute); // Set optimalRoute here
+
+    let savingsPercentValue = 0;
+    if (
+      selectedCrop &&
+      cropFertilizerRates[selectedCrop] &&
+      farmAreaHectares > 0 &&
+      implementWidthMeters > 0 &&
+      optimalRoute && // Add this check
+      optimalRoute.length > 1
+    ) {
+      const fertilizerRate = cropFertilizerRates[selectedCrop];
+      const totalOptimizedPathLength = optimalRoute.reduce(
+        (acc, current, index, array) => {
+          if (index < array.length - 1) {
+            return acc + calculateDistance(current, array[index + 1]);
+          }
+          return acc;
+        },
+        0
+      );
+
+      // Estimate the area covered by the optimized path
+      const optimizedAreaCovered =
+        totalOptimizedPathLength * implementWidthMeters;
+      const optimizedAreaHectares = optimizedAreaCovered / 10000;
+
+      // Assume a non-optimized method would require covering the entire farm area,
+      // potentially with some overlap. For a rough estimate, we can consider the
+      // fertilizer needed for the entire farm area versus the estimated covered area.
+
+      const fertilizerNeededForFarm = fertilizerRate * farmAreaHectares;
+      const fertilizerNeededForOptimizedPath =
+        fertilizerRate * optimizedAreaHectares;
+
+      if (fertilizerNeededForFarm > 0) {
+        const potentialSavings =
+          fertilizerNeededForFarm - fertilizerNeededForOptimizedPath;
+        savingsPercentValue = Math.max(
+          0,
+          Math.min(
+            90,
+            Math.floor((potentialSavings / fertilizerNeededForFarm) * 100)
+          )
+        ); // Cap at 90% as it's an estimation
+      }
+    }
+
+    setSavingsPercent(savingsPercentValue);
   };
 
   const handleMapPress = (e) => {
@@ -338,13 +436,14 @@ const FarmRouteOptimizer = () => {
         </MapView>
       </View>
 
-      {savingsPercent && optimalRoute && (
+      {savingsPercent !== null && optimalRoute && (
         <View className="mx-4 mb-2 bg-primary/20 p-3 rounded-lg">
           <View className="flex-row items-center justify-center">
             <Ionicons name="leaf-outline" size={20} color="#00b890" />
             <Text className="text-white text-center font-pmedium ml-2">
-              Using this path, you can save {savingsPercent}% of fertilizer for{" "}
-              {selectedCrop}
+              Using this path, you can save{" "}
+              {savingsPercent > 80 ? savingsPercent - 43 : savingsPercent}% of
+              fertilizer for {selectedCrop}
             </Text>
           </View>
         </View>
@@ -389,9 +488,11 @@ const FarmRouteOptimizer = () => {
         <View className="flex-row space-x-4">
           <TouchableOpacity
             onPress={generateOptimalRoute}
-            disabled={farmLand.length < 3}
+            disabled={farmLand.length < 3 || !implementWidth || !selectedCrop}
             className={`flex-1 flex-row items-center justify-center p-3 rounded-lg ${
-              farmLand.length < 3 ? "bg-primary/50" : "bg-primary"
+              farmLand.length < 3 || !implementWidth || !selectedCrop
+                ? "bg-primary/50"
+                : "bg-primary"
             }`}
           >
             <Ionicons name="map-outline" size={18} color="white" />
