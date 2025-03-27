@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Animated, Pressable, Dimensions, TextInput, Alert, Platform, FlatList } from 'react-native'
+import { View, Text, TouchableOpacity, Animated, Pressable, Dimensions, TextInput, Alert, Platform, ScrollView } from 'react-native'
 import React, { useState, useRef, useEffect } from 'react'
 import { Feather } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -6,7 +6,6 @@ import LottieView from 'lottie-react-native'
 import { Audio } from 'expo-av'
 import * as FileSystem from 'expo-file-system'
 import axios from 'axios'
-import * as Speech from 'expo-speech';
 import Groq from 'groq-sdk'
 
 // Initialize Groq client
@@ -19,8 +18,9 @@ const Home = () => {
   const [recording, setRecording] = useState(null)
   const [recordingUri, setRecordingUri] = useState(null)
   const [schemeDetails, setSchemeDetails] = useState(null)
-  const [chatHistory, setChatHistory] = useState([]); // Chat messages
   const [loading, setLoading] = useState(false)
+  const [messages, setMessages] = useState([]);
+
 
   const animatedValue = useRef(new Animated.Value(0)).current
   const { height } = Dimensions.get('window')
@@ -57,15 +57,6 @@ const Home = () => {
     }).start()
   }, [isVisible])
 
-  // 🔊 Function to Speak AI Response
-  const speakText = (text) => {
-    Speech.speak(text, {
-      language: 'hi',
-      rate: 0.9, // Adjust speed (0.1 - 1)
-      pitch: 1.0,
-    });
-  };
-
   const transcribeAudio = async (audioUri) => {
     try {
       // Convert local file URI to a format Groq can use
@@ -94,7 +85,7 @@ const Home = () => {
 
       // Extract transcribed text
       const transcribedText = response.data.text
-      console.log("Transcribed text",transcribedText)
+      console.log(transcribedText)
       setInputText(transcribedText)
       
       return transcribedText
@@ -137,10 +128,10 @@ const Home = () => {
       // Transcribe the recorded audio
       const transcribedText = await transcribeAudio(uri)
       
-      // if (transcribedText) {
-      //   // Fetch scheme details using transcribed text
-      //   await fetchSchemeDetails(transcribedText)
-      // }
+      if (transcribedText) {
+        // Fetch scheme details using transcribed text
+        await fetchSchemeDetails(transcribedText)
+      }
     } catch (err) {
       console.error('Failed to stop recording', err)
       setIsRecording(false)
@@ -149,78 +140,55 @@ const Home = () => {
   }
 
   const fetchSchemeDetails = async (query) => {
-    console.log("User Query:", query);
     setLoading(true);
-  
-    // Extract user details
-    const ageMatch = query.match(/\b\d{1,3}\b/);
-    const genderMatch = query.match(/\b(male|female|other)\b/i);
-    const locationMatch = query.match(/\b(Haryana|Punjab|UP|Delhi|Rajasthan|Maharashtra)\b/i);
-  
-    const age = ageMatch ? ageMatch[0] : null;
-    const gender = genderMatch ? genderMatch[0].toLowerCase() : null;
-    const location = locationMatch ? locationMatch[0] : null;
-  
-    if (!age && !gender && !location) {
-      const chatMsg = "Please enter your details like age, gender, or location.";
-      speakText(chatMsg);
-      setChatHistory(prevChat => [...prevChat, { type: 'bot', text: chatMsg }]);
-      setLoading(false);
-      return;
-    }
-  
     try {
-      // Construct API URL dynamically
-      const apiUrl = `http://192.168.109.121:5000/get_schemes?${age ? `age=${age}&` : ''}${gender ? `gender=${gender}&` : ''}${location ? `location=${location}` : ''}`;
-      console.log("API Request:", apiUrl);
+      const response = await fetch(
+        'http://127.0.0.1:5000/get_schemes?age=60&location=Haryana&gender=Male'
+      );
+      const data = await response.json();
   
-      const response = await fetch(apiUrl, { method: 'GET' });
-      const rawText = await response.text(); // Get raw response before parsing
-      console.log("Raw API Response:", rawText); // Log response before JSON parsing
-  
-      // Try parsing JSON
-      const data = JSON.parse(rawText); 
-  
-      let botResponse = 'No scheme details found for your query.';
       if (data && data.length > 0) {
-        botResponse = `**${data[0].scheme_name}**\n${data[0].explanation}`;
+        const newMessage = {
+          id: messages.length + 1,
+          text: `Name: ${data[0].scheme_name}\nExplanation: ${data[0].explanation}`,
+          sender: 'bot',
+        };
+  
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+      } else {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { id: messages.length + 1, text: 'No scheme details found', sender: 'bot' },
+        ]);
       }
-  
-      speakText(botResponse);
-      // 🔥 **Show Messages One by One for Better UX**
-    const botMessages = botResponse.split("\n").filter(line => line.trim() !== ""); // Split response by lines
-    setChatHistory(prevChat => [...prevChat, { type: 'user', text: query }]);
-
-    botMessages.forEach((msg, index) => {
-      setTimeout(() => {
-        setChatHistory(prevChat => [...prevChat, { type: 'bot', text: msg }]);
-      }, index * 1000); // Delay each message (1 sec per line)
-    });
-
-  } catch (error) {
-    console.error('API Error:', error);
-    setChatHistory(prevChat => [
-      ...prevChat,
-      { type: 'user', text: query },
-      { type: 'bot', text: 'Sorry, there was an error fetching scheme details.' }
-    ]);
-    speakText("Sorry, there was an error fetching scheme details.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  
-  
-
-
-
-  const handleSend = async () => {
-    if (inputText.trim()) {
-      await fetchSchemeDetails(inputText);
-      setInputText('');
+    } catch (error) {
+      console.error('API Error:', error);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { id: messages.length + 1, text: 'Could not fetch scheme details', sender: 'bot' },
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
+  
+
+  const handleSend = async () => {
+    console.log("input", inputText)
+    if (inputText.trim()) {
+      const userMessage = {
+        id: messages.length + 1,
+        text: inputText,
+        sender: 'user',
+      };
+  
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
+      setInputText('');
+      
+      await fetchSchemeDetails(inputText);
+    }
+  };
+  
 
   return (
     <View className="flex-1 bg-background min-h-full">
@@ -265,68 +233,39 @@ const Home = () => {
               <Feather name="x" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
-
-          {/* Chat History */}
-      <FlatList
-        data={chatHistory}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View className={`flex-row ${item.type === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
-            <View className={`mx-5 p-3 rounded-xl max-w-[80%] ${item.type === 'user' ? 'bg-primary' : 'bg-gray-800'}`}>
-              <Text className="text-white">{item.text}</Text>
-            </View>
-          </View>
-        )}
-        // inverted // Show latest messages at the bottom
-      />
           
           {/* Input bar with gradient glow */}
           <View className="px-5 pb-8">
-            <LinearGradient
-              colors={['rgba(30, 142, 62, 0)', 'rgba(30, 142, 62, 0)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="rounded-full p-[2px]"
-              style={{
-                shadowColor: '#1e8e3e',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 1.5,
-                shadowRadius: 10,
-                elevation: 10,
-              }}
-            >
-              <View className="flex-row items-center justify-between bg-[#121212] rounded-full px-3 py-2 border border-gray-800">
-                <TextInput
-                  className="flex-1 text-white text-base px-3 py-2"
-                  placeholder="Ask KrishiSaarthi"
-                  placeholderTextColor="#888"
-                  value={inputText}
-                  onChangeText={setInputText}
-                />
-                
-                {inputText.trim() && (
-                  <TouchableOpacity 
-                    className="w-10 h-10 justify-center items-center mr-2"
-                    onPress={handleSend}
-                    disabled={loading}
-                  >
-                    <Feather 
-                      name="send" 
-                      size={20} 
-                      color={loading ? "#888" : "#1e8e3e"} 
-                    />
-                  </TouchableOpacity>
-                )}
-                
-                <TouchableOpacity 
-                  className="w-10 h-10 justify-center items-center bg-primary rounded-full"
-                  onPress={startRecording}
-                >
-                  <Feather name="mic" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
-          </View>
+  <ScrollView className="h-80">
+    {messages.map((msg) => (
+      <View 
+        key={msg.id} 
+        className={`px-4 py-2 my-2 rounded-lg max-w-[75%] ${
+          msg.sender === 'user' ? 'bg-blue-600 self-end' : 'bg-gray-800 self-start'
+        }`}
+      >
+        <Text className="text-white">{msg.text}</Text>
+      </View>
+    ))}
+  </ScrollView>
+  
+  <View className="flex-row items-center bg-[#121212] rounded-full px-3 py-2 border border-gray-800">
+    <TextInput
+      className="flex-1 text-white text-base px-3 py-2"
+      placeholder="Ask KrishiSaarthi"
+      placeholderTextColor="#888"
+      value={inputText}
+      onChangeText={setInputText}
+    />
+    
+    {inputText.trim() && (
+      <TouchableOpacity className="w-10 h-10 justify-center items-center mr-2" onPress={handleSend}>
+        <Feather name="send" size={20} color="#1e8e3e" />
+      </TouchableOpacity>
+    )}
+  </View>
+</View>
+
         </View>
       </Animated.View>
 
