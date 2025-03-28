@@ -38,7 +38,7 @@ const Home = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          crops: ['Wheat', 'Tomato', 'Rice']
+          crops: ['Rice']
         })
       });
       const fertilizerJson = await fertilizerResponse.json();
