@@ -10,6 +10,7 @@ import {
   Check,
   XCircle
 } from 'lucide-react-native';
+import Assistant from '../../components/assistant';
 
 const Home = () => {
   const [weatherData, setWeatherData] = useState(null);
@@ -206,6 +207,7 @@ const Home = () => {
           )}
         </View>
       </ScrollView>
+      <Assistant/>
     </SafeAreaView>
   );
 };
