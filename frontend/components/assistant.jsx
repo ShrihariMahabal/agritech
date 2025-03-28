@@ -8,9 +8,11 @@ import * as FileSystem from 'expo-file-system'
 import axios from 'axios'
 import * as Speech from 'expo-speech';
 import Groq from 'groq-sdk'
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Groq client
 const groq = new Groq({ apiKey: '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' })
+const genAI = new GoogleGenerativeAI("AIzaSyBnkIJAU5_CFldzCvPp4cgBDo167wR_l2c");
 
 const Assistant = () => {
   const [isVisible, setIsVisible] = useState(false)
@@ -24,8 +26,6 @@ const Assistant = () => {
   const [loading, setLoading] = useState(false)
   const animatedValue = useRef(new Animated.Value(0)).current
   const { height } = Dimensions.get('window')
-
-  
 
   // Define animated interpolations
   const opacity = animatedValue.interpolate({
@@ -70,13 +70,11 @@ const Assistant = () => {
 
   const transcribeAudio = async (audioUri) => {
     try {
-      // Convert local file URI to a format Groq can use
       const fileInfo = await FileSystem.getInfoAsync(audioUri)
       if (!fileInfo.exists) {
         throw new Error('Audio file does not exist')
       }
 
-      // Create a FormData object for file upload
       const formData = new FormData()
       formData.append('file', {
         uri: audioUri,
@@ -86,7 +84,6 @@ const Assistant = () => {
       formData.append('model', 'whisper-large-v3')
       formData.append('response_format', 'verbose_json')
 
-      // Use axios for multipart form data upload
       const response = await axios.post('https://api.groq.com/openai/v1/audio/transcriptions', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -94,9 +91,8 @@ const Assistant = () => {
         }
       })
 
-      // Extract transcribed text
       const transcribedText = response.data.text
-      console.log("Transcribed text",transcribedText)
+      console.log("Transcribed text", transcribedText)
       setInputText(transcribedText)
       
       return transcribedText
@@ -136,13 +132,7 @@ const Assistant = () => {
       setRecordingUri(uri)
       setIsRecording(false)
 
-      // Transcribe the recorded audio
       const transcribedText = await transcribeAudio(uri)
-      
-      // if (transcribedText) {
-      //   // Fetch scheme details using transcribed text
-      //   await fetchSchemeDetails(transcribedText)
-      // }
     } catch (err) {
       console.error('Failed to stop recording', err)
       setIsRecording(false)
@@ -163,131 +153,82 @@ const Assistant = () => {
     setIsRecording(false);
   }
 
-  
+  // Function to clean the response text
+  const cleanResponseText = (text) => {
+    // Remove markdown formatting (**, __, etc.)
+    let cleanedText = text.replace(/\*\*/g, '').replace(/__/g, '');
+    
+    // Replace bullet points with new lines
+    cleanedText = cleanedText.replace(/\*/g, '\n•');
+    
+    // Remove any remaining markdown syntax
+    cleanedText = cleanedText.replace(/\[.*?\]\(.*?\)/g, ''); // Remove links
+    
+    return cleanedText.trim();
+  };
 
   const fetchSchemeDetails = async (query) => {
     console.log("User Query:", query);
     setLoading(true);
 
-    // ✅ Match numbers (age) in English & Hindi
-    const ageMatch = query.match(/\b\d{1,3}\b|\b[०-९]{1,3}\b/);
-
-    // ✅ Match gender in English & Hindi
-    const genderMatch = query.match(/\b(male|female|other|पुरुष|महिला|अन्य)\b/i);
-
-    // ✅ Match locations in English & Hindi
-    const locationMatch = query.match(/\b(Haryana|Punjab|UP|Delhi|Rajasthan|Maharashtra|हरियाणा|पंजाब|उत्तर प्रदेश|दिल्ली|राजस्थान|महाराष्ट्र)\b/i);
-
-    // Convert Hindi numbers to English
-    const hindiToEnglishNumbers = (str) => str.replace(/[०-९]/g, d => "०१२३४५६७८९".indexOf(d));
-
-    const age = ageMatch ? hindiToEnglishNumbers(ageMatch[0]) : null;
-    const gender = genderMatch 
-        ? (["पुरुष", "male"].includes(genderMatch[0].toLowerCase()) ? "male" : 
-           ["महिला", "female"].includes(genderMatch[0].toLowerCase()) ? "female" : "other")
-        : null;
-
-    const locationMap = {
-        "हरियाणा": "Haryana",
-        "पंजाब": "Punjab",
-        "उत्तर प्रदेश": "UP",
-        "दिल्ली": "Delhi",
-        "राजस्थान": "Rajasthan",
-        "महाराष्ट्र": "Maharashtra",
-        "punjab": "Punjab"
-    };
-
-    const location = locationMatch 
-        ? locationMap[locationMatch[0]] || locationMatch[0]  // ✅ Ensures "Punjab" not "punjab"
-        : null;
-
-    if (!age && !gender && !location) {
-        const chatMsg = "कृपया अपनी जानकारी दें, जैसे उम्र, लिंग, या स्थान।";
-        speakText(chatMsg);
-        setChatHistory(prevChat => [...prevChat, { type: 'bot', text: chatMsg }]);
-        setLoading(false);
-        return;
-    }
-
     try {
-        // ✅ Dynamically create API URL with only non-null parameters
-        const queryParams = new URLSearchParams();
-        if (age) queryParams.append("age", age);
-        if (gender) queryParams.append("gender", gender);
-        if (location) queryParams.append("location", location);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      
+      const prompt = `You are an assistant to an Indian farmer. His prompt is: ${query}. 
+      Answer the farmer in short, concise and simple manner. 
+      If the input prompt is in Hindi, generate answer in Hindi. 
+      If it's in English then English only. 
+      Provide the response in a single paragraph without any markdown formatting.`;
 
-        const apiUrl = `http://127.0.0.1:5000/get_schemes?${queryParams.toString()}`;
-        console.log("API Request:", apiUrl);
+      const result = await model.generateContent(prompt);
+      const response = await result.response.text();
 
-        const response = await fetch(apiUrl, { method: 'GET' });
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
+      // Clean the response text
+      const cleanedResponse = cleanResponseText(response) || 
+        (query.toLowerCase().includes('hindi') ? 
+          'आपकी खोज के लिए कोई योजना नहीं मिली।' : 
+          'No schemes found for your query.');
 
-        const rawText = await response.text();
-        console.log("Raw API Response:", rawText);
+      speakText(cleanedResponse);
 
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch (parseError) {
-            console.error("JSON Parsing Error:", parseError);
-            throw new Error("Invalid response format from API.");
-        }
-
-        let botResponse = 'आपकी खोज के लिए कोई योजना नहीं मिली।';
-        if (Array.isArray(data) && data.length > 0) {
-            botResponse = `**${data[0].scheme_name}**\n${data[0].explanation}`;
-        } else if (data?.message) {
-            botResponse = data.message;
-        }
-
-        speakText(botResponse);
-
-        // 🔥 Show messages one by one for better UX
-        const botMessages = botResponse.split("\n").filter(line => line.trim() !== "");
-        setChatHistory(prevChat => [...prevChat, { type: 'user', text: query }]);
-
-        botMessages.forEach((msg, index) => {
-            setTimeout(() => {
-                setChatHistory(prevChat => [...prevChat, { type: 'bot', text: msg }]);
-            }, index * 1000);
-        });
+      // Update chat history with single message
+      setChatHistory(prevChat => [
+        ...prevChat, 
+        { type: 'user', text: query },
+        { type: 'bot', text: cleanedResponse }
+      ]);
 
     } catch (error) {
-        console.error('API Error:', error);
-        setChatHistory(prevChat => [
-            ...prevChat,
-            { type: 'user', text: query },
-            { type: 'bot', text: 'माफ करें, योजना विवरण प्राप्त करने में त्रुटि हुई।' }
-        ]);
-        speakText("माफ करें, योजना विवरण प्राप्त करने में त्रुटि हुई।");
+      console.error('Gemini API Error:', error);
+      const errorMsg = query.toLowerCase().includes('hindi') ? 
+        'माफ करें, योजना विवरण प्राप्त करने में त्रुटि हुई।' : 
+        'Sorry, there was an error fetching scheme details.';
+      
+      setChatHistory(prevChat => [
+        ...prevChat,
+        { type: 'user', text: query },
+        { type: 'bot', text: errorMsg }
+      ]);
+      speakText(errorMsg);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
-  
-
-  
-  
-
-
-
-const handleSend = async () => {
-  if (inputText.trim()) {
-    await fetchSchemeDetails(inputText);
-    setInputText('');
-  }
-};
+  const handleSend = async () => {
+    if (inputText.trim()) {
+      await fetchSchemeDetails(inputText);
+      setInputText('');
+    }
+  };
 
   return (
     <>      
-    <Text>home</Text>
+      <Text>home</Text>
       
       {/* Floating action button */}
       <TouchableOpacity 
-        className="absolute bottom-5 right-5 bg-green-600 w-14 h-14 rounded-full justify-center items-center shadow-lg"
+        className="absolute bottom-5 right-5 bg-primary w-14 h-14 rounded-full justify-center items-center shadow-lg"
         onPress={() => setIsVisible(true)}
       >
         <Feather name="message-circle" size={24} color="#fff" />
@@ -326,18 +267,19 @@ const handleSend = async () => {
           </View>
 
           {/* Chat History */}
-      <FlatList
-        data={chatHistory}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View className={`flex-row ${item.type === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
-            <View className={`mx-5 p-3 rounded-xl max-w-[80%] ${item.type === 'user' ? 'bg-primary' : 'bg-gray-800'}`}>
-              <Text className="text-white">{item.text}</Text>
-            </View>
-          </View>
-        )}
-        // inverted // Show latest messages at the bottom
-      />
+          <FlatList
+            data={chatHistory}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <View className={`flex-row ${item.type === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
+                <View className={`mx-5 p-3 rounded-xl max-w-[80%] ${item.type === 'user' ? 'bg-primary' : 'bg-gray-800'}`}>
+                  <Text className="text-white">{item.text}</Text>
+                </View>
+              </View>
+            )}
+            className="flex-1"
+            contentContainerStyle={{ paddingVertical: 10 }}
+          />
           
           {/* Input bar with gradient glow */}
           <View className="px-5 pb-8">
@@ -361,9 +303,10 @@ const handleSend = async () => {
                   placeholderTextColor="#888"
                   value={inputText}
                   onChangeText={setInputText}
+                  onSubmitEditing={handleSend}
                 />
                 
-                {inputText.trim() && (
+                {inputText.trim() ? (
                   <TouchableOpacity 
                     className="w-10 h-10 justify-center items-center mr-2"
                     onPress={handleSend}
@@ -375,14 +318,14 @@ const handleSend = async () => {
                       color={loading ? "#888" : "#1e8e3e"} 
                     />
                   </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    className="w-10 h-10 justify-center items-center bg-primary rounded-full"
+                    onPress={startRecording}
+                  >
+                    <Feather name="mic" size={20} color="#fff" />
+                  </TouchableOpacity>
                 )}
-                
-                <TouchableOpacity 
-                  className="w-10 h-10 justify-center items-center bg-primary rounded-full"
-                  onPress={startRecording}
-                >
-                  <Feather name="mic" size={20} color="#fff" />
-                </TouchableOpacity>
               </View>
             </LinearGradient>
           </View>
