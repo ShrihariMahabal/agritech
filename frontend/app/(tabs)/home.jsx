@@ -23,12 +23,12 @@ const Home = () => {
     setRefreshing(true);
     try {
       // Weather data
-      const weatherResponse = await fetch('http://127.0.0.1:5000/weather');
+      const weatherResponse = await fetch('http://localhost:5000/weather');
       const weatherJson = await weatherResponse.json();
       setWeatherData(weatherJson);
 
       // Soil data
-      const soilResponse = await fetch('http://127.0.0.1:5000/soil');
+      const soilResponse = await fetch('http://localhost:5000/soil');
       const soilJson = await soilResponse.json();
       setSoilData(soilJson);
 
