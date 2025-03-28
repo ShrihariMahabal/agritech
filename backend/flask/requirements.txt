@@ -1,6 +1,7 @@
 Flask
 flask-cors
-tensorflow
+tensorflow-macos
+tensorflow-metal
 numpy
 Pillow
 PyPDF2
@@ -8,4 +9,3 @@ difflib
 pymongo
 requests 
 python-dotenv
-pymongo
