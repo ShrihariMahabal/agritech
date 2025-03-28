@@ -6,6 +6,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker'; // Updated import
 
 const Travel = () => {
   const [region, setRegion] = useState(null);
@@ -14,6 +15,7 @@ const Travel = () => {
   const [loading, setLoading] = useState(true);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [cropType, setCropType] = useState('wheat'); // New state for crop type
   const mapRef = useRef(null);
 
   // Get user's location on component mount
@@ -250,6 +252,60 @@ const Travel = () => {
         </View>
       </View>
       
+      {/* Crop Type Picker */}
+      <View style={styles.pickerContainer}>
+        <View style={styles.pickerWrapper}>
+          <Ionicons name="leaf-outline" size={20} color="#00b890" style={styles.pickerIcon} />
+          <Picker
+            selectedValue={cropType}
+            style={styles.picker}
+            dropdownIconColor="#00b890"
+            onValueChange={(itemValue) => setCropType(itemValue)}
+          >
+            <Picker.Item label="Select Crop Type" value="" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            {/* Cereals */}
+            <Picker.Item label="Rice (Paddy)" value="rice" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Wheat" value="wheat" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Maize (Corn)" value="maize" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Jowar (Sorghum)" value="jowar" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Bajra (Pearl Millet)" value="bajra" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Ragi (Finger Millet)" value="ragi" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            
+            {/* Pulses */}
+            <Picker.Item label="Chickpea (Bengal Gram)" value="chickpea" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Pigeon Pea (Tur Dal)" value="pigeonpea" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Green Gram (Moong)" value="greengram" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Black Gram (Urad)" value="blackgram" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            
+            {/* Oilseeds */}
+            <Picker.Item label="Groundnut" value="groundnut" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Soybean" value="soybean" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Mustard" value="mustard" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Sunflower" value="sunflower" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Sesame" value="sesame" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            
+            {/* Commercial Crops */}
+            <Picker.Item label="Cotton" value="cotton" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Sugarcane" value="sugarcane" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Jute" value="jute" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Tea" value="tea" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Coffee" value="coffee" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            
+            {/* Vegetables */}
+            <Picker.Item label="Potato" value="potato" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Onion" value="onion" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Tomato" value="tomato" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Cauliflower" value="cauliflower" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            
+            {/* Fruits */}
+            <Picker.Item label="Mango" value="mango" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Banana" value="banana" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Citrus" value="citrus" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+            <Picker.Item label="Grapes" value="grapes" color="#fff" style={{ backgroundColor: '#131d2a', fontFamily: 'Poppins_500Medium' }} />
+          </Picker>
+        </View>
+      </View>
+      
       {/* Action buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -325,7 +381,7 @@ const Travel = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: '#131d2a', // Changed to surface color
   },
   loadingContainer: {
     flex: 1,
@@ -510,7 +566,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#182635',
+    backgroundColor: '#131d2a', // Changed to surface color
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     shadowColor: '#000',
@@ -576,7 +632,7 @@ const styles = StyleSheet.create({
   helpContainer: {
     padding: 10,
     alignItems: 'center',
-    backgroundColor: '#182635',
+    backgroundColor: '#131d2a', // Changed to surface color
     flexDirection: 'row',
     justifyContent: 'center',
   },
